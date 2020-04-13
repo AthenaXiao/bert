@@ -139,7 +139,10 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
     (masked_lm_loss,
      masked_lm_example_loss, masked_lm_log_probs) = get_masked_lm_output(
          bert_config, model.get_sequence_output(), model.get_embedding_table(),
-         masked_lm_positions, masked_lm_ids, masked_lm_weights)
+         masked_lm_positions, masked_lm_ids, masked_lm_weights) 
+    # model.get_sequence_output() is the input of the classification task.
+    # masked_lm_positions is used to fetch the hidden vectors
+    # masked_lm_ids is the labels.
 
     (next_sentence_loss, next_sentence_example_loss,
      next_sentence_log_probs) = get_next_sentence_output(
@@ -240,7 +243,7 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
 def get_masked_lm_output(bert_config, input_tensor, output_weights, positions,
                          label_ids, label_weights):
   """Get loss and log probs for the masked LM."""
-  input_tensor = gather_indexes(input_tensor, positions)
+  input_tensor = gather_indexes(input_tensor, positions) # get the hidden vectors for the masked ones by the sequence and masked ids
 
   with tf.variable_scope("cls/predictions"):
     # We apply one more non-linear transformation before the output layer.
@@ -252,7 +255,7 @@ def get_masked_lm_output(bert_config, input_tensor, output_weights, positions,
           activation=modeling.get_activation(bert_config.hidden_act),
           kernel_initializer=modeling.create_initializer(
               bert_config.initializer_range))
-      input_tensor = modeling.layer_norm(input_tensor)
+      input_tensor = modeling.layer_norm(input_tensor) # layer normalization for input_tensor
 
     # The output weights are the same as the input embeddings, but there is
     # an output-only bias for each token.
@@ -263,7 +266,7 @@ def get_masked_lm_output(bert_config, input_tensor, output_weights, positions,
     logits = tf.matmul(input_tensor, output_weights, transpose_b=True)
     logits = tf.nn.bias_add(logits, output_bias)
     log_probs = tf.nn.log_softmax(logits, axis=-1)
-
+    # Why use the input embedding as the weight matrix. 
     label_ids = tf.reshape(label_ids, [-1])
     label_weights = tf.reshape(label_weights, [-1])
 
